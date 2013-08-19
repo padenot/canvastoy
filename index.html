@@ -1,0 +1,98 @@
+<html>
+<head>
+<meta charset=utf-8>
+<style>
+canvas {
+  z-index: 1;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+#editor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0.5em;
+  width: calc(50% - 1.5em);
+  height: 100%;
+  z-index: 2;
+  transition: box-shadow 0.7s;
+}
+.error {
+  box-shadow: 0px 0px 100px red inset;
+}
+
+.ok {
+  box-shadow: 0px 0px 100px green inset;
+}
+</style>
+</head>
+<body>
+<pre contenteditable id=editor placeholder=>
+/* ctrl + enter to render */
+/* cv = document.getElementByTagName("canvas")[0] */
+/* (w, h) = (cv.width, cv.height) */
+/* c = cv.getContext('2d') */
+/* b = c.createImageData(w, h) */
+
+noise(b);
+</pre>
+<canvas>
+</canvas>
+<script>
+function $(e) {
+  return document.querySelector(e);
+}
+cv = $("canvas"),
+c = cv.getContext('2d'),
+ed = $("#editor");
+
+ed.spellCheck = false;
+
+cv.height = h = window.innerHeight;
+cv.width  = w = window.innerWidth / 2;
+
+document.addEventListener("keypress", function(e) {
+  if (e.ctrlKey && e.keyCode == 13) {
+    render();
+  }
+});
+
+function noise(b) {
+  for (var i = 0; i < b.length; i+=4) {
+    b[i] = b[i+1] = b[i+2] = Math.random() * 255;
+    b[i + 3] = 255;
+  }
+}
+
+function render() {
+  var err = false,
+      id = c.createImageData(w, h),
+      b = id.data;
+
+  c.clearRect(0, 0, w, h);
+
+  try {
+    var str = ed.textContent.replace("\n", " ");
+    eval(str);
+  } catch(e) {
+    err = true;
+  }
+  c.putImageData(id, 0, 0);
+  if (err) {
+    ed.className = "error";
+    setTimeout(function() {
+      ed.className = "";
+    }, 500);
+    console.log("error");
+  } else {
+    console.log("ok");
+    ed.className = "ok";
+    setTimeout(function() {
+      ed.className = "";
+    }, 500);
+  }
+}
+</script>
+</body>
+</html>
