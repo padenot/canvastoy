@@ -204,10 +204,10 @@ keys = [];
 ed.spellCheck = false;
 
 cv.height = h = window.innerHeight;
-cv.width  = w = window.innerWidth / 2;
+cv.width  = w = (window.innerWidth / 2) |0;
 
 document.addEventListener("keypress", function(e) {
-  if (e.ctrlKey && e.keyCode == 13) {
+  if (e.ctrlKey && (e.keyCode == 13 || e.keyCode == 10)) {
     render();
   }
 });
@@ -220,26 +220,30 @@ function noise(b) {
 }
 
 function simplex_noise(b, w, h, largestFeature, persistence) {
-  var octave_count = Math.ceil(Math.log10(largestFeature)/Math.log10(2));
+  var octave_count = ((Math.log(largestFeature)/Math.log(2))|0) + 1;
   var octaves = [];
   var freqs = [];
   var ampl = [];
-  for (var i = 0; i < octave_count; i++){
+  for (var i = 0; i < octave_count; i++) {
     octaves[i] = new SimplexNoise();
     freqs[i] = Math.pow(2, i);
     ampl[i] = Math.pow(persistence, octaves.length - i);
   }
 
   var rv = 0;
+  var x = 0, y = 0;
   for (var i = 0; i < b.length; i+=4) {
-    var x = i % (w * 4),
-        y = (i / w) * 4 | 0;
     var result = 0;
     for (var j = 0; j < octave_count; j++) {
       result = result + octaves[j].noise2D(x / freqs[j], y / freqs[j]) * ampl[j];
     }
     b[i] = b[i+1] = b[i+2] = (result + 1) * 128;
     b[i + 3] = 255;
+    x++;
+    if (x >= w) {
+      x = 0;
+      y++;
+    }
   }
 }
 
