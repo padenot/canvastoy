@@ -45,6 +45,7 @@ canvas {
 /* b = c.createImageData(w, h) */
 
 simplex_noise(b, w, h, 10000, 0.1);
+hblur(b, 15);
 /* noise(b); */
 </pre>
 <canvas>
@@ -341,9 +342,43 @@ grad3: new Float32Array([1, 1, 0,
        }
 }
 
-function lopass(b) {
+/**
+ * horizontal box blur with a right bias
+ */
+function hblur(b, blur_px)  {
+  var avg = 0;
+  // absolute index in buffer
+  var x = 0;
+  for (var scanline = 0; scanline < h; scanline++) {
+    avg = 0;
+
+    // fill kernel
+    for (var i = 0; i < blur_px; i++) {
+      avg += b[i];
+    }
+    b[x] = b[x+1] = b[x+2] = avg / blur_px;
+
+    // process most of the scanline
+    for (var i = 1; i < w - blur_px; i++) {
+      avg += b[x + blur_px * 4] - b[x- 4];
+      b[x] = b[x+1] = b[x+2] = avg / blur_px;
+      x += 4;
+    }
+
+    // flush scanline
+    for (var i = w - blur_px - 1; i < w; i++) {
+      avg -= b[x - 4];
+      b[x] = b[x+1] = b[x+2] = avg / blur_px;
+      x += 4;
+    }
+  }
+}
+
+function lopass(b, pole) {
+  var mem_in = b[0];
+  var mem_out = b[0];
   for (var i = 4; i < b.length; i += 4) {
-    b[i] = b[i+1] = b[i+2] = (b[i] + b[i - 1] * 0.39) / 2;
+    mem_in = b[i];
   }
 }
 
