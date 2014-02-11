@@ -1,6 +1,8 @@
 <!doctype html>
 <html>
 <head>
+<title>canvastoy</title>
+<link rel="icon" type="image/png" href="64.png">
 <link rel="stylesheet" href="lib/codemirror.css">
 <link rel="stylesheet" href="lib/solarized.css">
 <link rel="stylesheet" href="lib/monokai.css">
@@ -57,6 +59,13 @@ canvas {
   z-index: 4;
 }
 
+#install-btn {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 4;
+}
+
 #wrapper {
   background: white;
 }
@@ -80,6 +89,7 @@ hblur(b, 15);
   <select id=versions>
   </select>
   <button id=fullscreen>fullscreen</button>
+  <button id=install-btn>install</button>
 </div>
 <script>
 /* gaia: shared/js/async_storage.js */
@@ -547,6 +557,35 @@ function render() {
 function clearclear() {
   asyncStorage.clear();
 }
+
+var manifest_url = location.href + 'manifest.webapp';
+
+function install(e) {
+  e.preventDefault();
+  var installLocFind = navigator.mozApps.install(manifest_url);
+  installLocFind.onsuccess = function(data) {
+    // App is installed, do something
+  };
+  installLocFind.onerror = function() {
+    // App wasn't installed, info is in
+    // installapp.error.name
+    alert(installLocFind.error.name);
+  };
+};
+
+var button = $("#install-btn");
+
+var installCheck = navigator.mozApps.checkInstalled(manifest_url);
+
+installCheck.onsuccess = function() {
+  if(installCheck.result) {
+    button.style.display = "none";
+  } else {
+    button.addEventListener('click', install, false);
+  };
+};
+
+
 populate();
 </script>
 </body>

@@ -1,0 +1,23 @@
+{
+  "version": "0.1",
+  "name": "cvsty",
+  "description": "Online Canvas Editor",
+  "launch_path": "/index.html",
+  "icons": {
+    "16": "16.png",
+    "32": "32.png",
+    "48": "48.png",
+    "60": "60.png",
+    "90": "90.png",
+    "120": "120.png",
+    "128": "128.png",
+    "256": "256.png"
+  },
+  "developer": {
+    "name": "Paul Adenot",
+    "url": "http://canvastoy.paul.cx"
+  },
+  "locales": { },
+  "default_locale": "en"
+}
+
