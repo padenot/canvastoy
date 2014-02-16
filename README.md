@@ -19,8 +19,8 @@ projects.
 1. ctrl + enter, or touch the canvas on the right to render
 1. goto 1
 
-You can install as an app, go fullscreen, and restore old versin using the
-buttons and dropdown.
+You can install it as an app, go fullscreen, and restore old versions using the
+buttons and the dropdown thingy.
 
 Once accessed once, the app is cached locally. If a new version is available,
 it will ask you if you want to update. This will not affect the saved programs.
