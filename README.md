@@ -7,6 +7,8 @@
 Live coding environment for &lt;canvas&gt;, for pixel-manipulation kind of
 stuff.
 
+Demo at <http://padenot.github.io/canvastoy>
+
 # Why?
 
 I needed a tool to quickly experiment to generate textures for some other
@@ -29,4 +31,4 @@ are (well, will be) a bunch of algorithm (noises, blur, filters, etc.) directly
 accessible.
 
 #License
-MIT
+MIT. This project uses CodeMirror, which is not MIT.
