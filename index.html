@@ -81,7 +81,7 @@ canvas {
 /* b = c.createImageData(w, h) */
 
 simplex_noise(b, w, h, 10000, 0.1);
-hblur(b, 15);
+gaussian_blur(b, 14);
 /* noise(b); */
   </textarea>
   <canvas>
@@ -295,6 +295,15 @@ document.addEventListener("keypress", function(e) {
   }
 });
 
+function set(b, x, y, p) {
+  var i = x * 4 + y * w * 4;
+  b[i] = b[i+1] = b[i+2] = p;
+  b[i+3] = 255;
+}
+
+function get(b, x, y) {
+  return b[x * 4 + y * w * 4];
+}
 
 function noise(b) {
   for (var i = 0; i < b.length; i+=4) {
@@ -429,45 +438,86 @@ grad3: new Float32Array([1, 1, 0,
        }
 }
 
-/**
- * horizontal box blur
- */
-function hblur(b, blur_px)  {
+/* box blur, operate on a scanline */
+function blur_scanline(b, offset, len, blur_px) {
+  var x = offset;
   var avg = 0;
+  // XXX distinguish left and right lobe if blur_px is odd
   var hb = Math.floor(blur_px / 2);
-  // absolute index in buffer
+  // fill kernel: first pixel
+  for (var i = 0; i < hb; i++) {
+    avg += b[i * 4];
+  }
+  b[x] = b[x+1] = b[x+2] = avg / hb;
+  x+=4;
+
+  // left lobe
+  for (var i = 0; i < hb; i++) {
+    avg += b[x + hb * 4];
+    b[x] = b[x+1] = b[x+2] = avg / (hb + 1 + i);
+    x += 4;
+  }
+
+  // process most of the scanline
+  for (var i = 0; i < len - hb - hb - 1; i++) {
+    avg += b[x + hb * 4];
+    avg -= b[x - hb * 4];
+    b[x] = b[x+1] = b[x+2] = avg / blur_px;
+    x += 4;
+  }
+
+  // flush kernel
+  for (var i = 0; i < hb; i++) {
+    avg -= b[x - hb * 4];
+    b[x] = b[x+1] = b[x+2] = avg / (blur_px - i - 1);
+    x += 4;
+  }
+  return x;
+}
+
+/* horizontal blur */
+function hblur(b, blur_px)  {
   var x = 0;
   for (var scanline = 0; scanline < h; scanline++) {
-    avg = 0;
+    x = blur_scanline(b, x, w, blur_px);
+  }
+}
 
-    // fill kernel: first pixel
-    for (var i = 0; i < hb; i++) {
-      avg += b[i * 4];
-    }
-    b[x] = b[x+1] = b[x+2] = avg / hb;
-    x+=4;
+/* copy a vertical line of pixel from the image to a linear buffer */
+function copy_vertical_in_buffer(b, scanline, buffer) {
+  for (var i = 0; i < buffer.length; i+=4) {
+    buffer[i]   = b[4 * (scanline + i / 4* w)];
+    buffer[i+1] = b[4 * (scanline + i / 4* w) + 1];
+    buffer[i+2] = b[4 * (scanline + i / 4* w) + 2];
+    buffer[i+3] = b[4 * (scanline + i / 4* w) + 3];
+  }
+}
 
-    // left lobe
-    for (var i = 0; i < hb; i++) {
-      avg += b[x + hb * 4];
-      b[x] = b[x+1] = b[x+2] = avg / (hb + 1 + i);
-      x += 4;
-    }
+/* copy a buffer to a vertical */
+function copy_buffer_in_vertical(b, scanline, buffer) {
+  for (var i = 0; i < buffer.length; i+=4) {
+    b[scanline * 4 + i / 4 * w * 4]     = buffer[i];
+    b[scanline * 4 + i / 4 * w * 4 + 1] = buffer[i+1];
+    b[scanline * 4 + i / 4 * w * 4 + 2] = buffer[i+2];
+    b[scanline * 4 + i / 4 * w * 4 + 3] = buffer[i+3];
+  }
+}
 
-    // process most of the scanline
-    for (var i = 0; i < w - hb - hb - 1; i++) {
-      avg += b[x + hb * 4];
-      avg -= b[x - hb * 4];
-      b[x] = b[x+1] = b[x+2] = avg / blur_px;
-      x += 4;
-    }
+/* vertical blur of blur_px */
+function vblur(b, blur_px) {
+  var buf = new Uint8ClampedArray(h * 4);
 
-    // flush kernel
-    for (var i = 0; i < hb; i++) {
-      avg -= b[x - hb * 4];
-      b[x] = b[x+1] = b[x+2] = avg / (blur_px - i - 1);
-      x += 4;
-    }
+  for (var vertical = 0; vertical < w; vertical++) {
+    copy_vertical_in_buffer(b, vertical, buf);
+    blur_scanline(buf, 0, h, blur_px);
+    copy_buffer_in_vertical(b, vertical, buf);
+  }
+}
+
+function gaussian_blur(b, blur_px) {
+  for (var i = 0; i < 3; i++) {
+    hblur(b, blur_px);
+    vblur(b, blur_px);
   }
 }
 
@@ -542,6 +592,8 @@ function render() {
       err = true;
       var doc = editor.getDoc();
       var ln = e.lineNumber - 1;
+      console.log(ln);
+      console.log(e.message);
       marks.push(doc.markText({ line: ln, ch: 0 },
                               { line: ln, ch: editor.getLine(ln).length },
                               { className: "text-error", title: e.message })
