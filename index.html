@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html manifest="canvastoy.appcache">
 <head>
 <title>canvastoy</title>
 <link rel="icon" type="image/png" href="64.png">
@@ -648,6 +648,20 @@ installCheck.onsuccess = function() {
   };
 };
 
+function updateReady() {
+  if (navigator.onLine) {
+    var rv = confirm("You're online, and a new version is available, update?");
+    if (rv) {
+      document.location.reload(true);
+    }
+  }
+}
+
+window.applicationCache.addEventListener("updateready", updateReady);
+
+if(window.applicationCache.status === window.applicationCache.UPDATEREADY) {
+  updateReady();
+}
 
 populate();
 </script>
