@@ -278,7 +278,6 @@ fsbutton.addEventListener("click", function(e) {
                 document.mozCancelFullScreen ||
                 document.webkitCancelFullScreen;
       cfs.bind(document)();
-      resizeCanvas();
     }
 });
 
@@ -311,6 +310,91 @@ function noise(b) {
     b[i] = b[i+1] = b[i+2] = Math.random() * 255;
     b[i + 3] = 255;
   }
+}
+
+function zoom(b, w, h, factor) {
+  var zoomed = c.createImageData(w, h);
+  var zd = zoomed.data;
+  for (var y = 0; y < h; y++) {
+    for (var x = 0; x < w; x++) {
+      zd[idx(x, y)] = zd[idx(x, y) + 1] = zd[idx(x, y) + 2] = b[idx(Math.floor(x/factor), Math.floor(y/factor))];
+      zd[idx(x, y) + 3] = 255;
+    }
+  }
+  return zoomed;
+}
+
+function smoothxy(b, x, y) {
+  var fractX = x -  Math.floor(x);
+  var fractY = y - Math.floor(y);
+
+  var x1 =  (Math.floor(x) + w) % w;
+  var y1 = (Math.floor(y) + h) % h;
+
+  var x2 = (x1 + w - 1) % w;
+  var y2 = (y1 + h - 1) % h;
+
+  var value = 0.0;
+  value += fractX       * fractY       * b[idx(x1,y1)];
+  value += fractX       * (1 - fractY) * b[idx(x1,y2)];
+  value += (1 - fractX) * fractY       * b[idx(x2,y1)];
+  value += (1 - fractX) * (1 - fractY) * b[idx(x2,y2)];
+
+  return value;
+}
+
+function smoothnoise(b, filtering) {
+  cid = c.createImageData(w, h);
+  cd = cid.data;
+
+  for (var y = 0; y < h; y++) {
+    for (var x = 0; x < w; x++) {
+      cd[idx(x, y)] = cd[idx(x, y) + 1] = cd[idx(x, y) + 2] = smoothxy(b, x / filtering, y / filtering);
+      cd[idx(x, y) + 3] = 255;
+    }
+  }
+
+  return cid;
+}
+
+function turbulence(b, octaves) {
+  var initial_octaves = octaves;
+  var outid = c.createImageData(w, h);
+  var out = outid.data;
+  while(octaves >= 1) {
+    console.log(octaves)
+    // var cid = smoothnoise(b, octaves);
+    // var cc = cid.data;
+    var cc = b;
+    for (var i = 0; i < cc.length; i++) {
+      out[i] = Math.min((out[i] + (cc[i] /* / Math.sqrt(initial_octaves) */ )), 255);
+    }
+    octaves /= 2;
+  }
+  return outid;
+}
+
+function funny_yellowish_thing() {
+  function noise(b) {
+    for (var i = 0; i < b.length; i+=4) {
+      b[i] = b[i+1] = b[i+2] = Math.random() * 255;
+      b[i + 3] = 255;
+    }
+  }
+
+  function zoom(b, w, h, factor) {
+    var zoomed = c.createImageData(w, h);
+    var zd = zoomed.data;
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        zd[idx(x, y)] = zd[idx(x, y) + 1] = zd[idx(x, y) + 1] = b[idx(x / factor, y/factor)];
+        zd[idx(x, y) + 3] = 255;
+      }
+    }
+    return zoomed;
+  }
+  noise(b, w, h);
+  id = zoom(b, w, h, 8);
 }
 
 function simplex_noise(b, w, h, largestFeature, persistence) {
@@ -528,6 +612,63 @@ function lopass(b, pole) {
   for (var i = 4; i < b.length; i += 4) {
     mem_in = b[i];
   }
+}
+
+function clamp(v, min, max) {
+  return Math.max(Math.min(v, max), min);
+}
+
+function rgbavg(b, i) {
+  return (b[i] + b[i+1] + b[i+2]) / (3 * 255);
+}
+
+function idx(x, y) {
+  return x * 4 + y * w * 4;
+}
+
+function vnorm(x, y, z) {
+  var len = Math.sqrt((x * x) + (y * y) + (z * z))
+  return [x / len, y / len, z / len];
+}
+
+function normalmap(b, w, h, depth) {
+  var nm = c.createImageData(w, h);
+  var nmd = nm.data;
+
+  for (var y = 0; y < h; y++) {
+    for (var x = 0; x < w; x++) {
+      var topleft      = idx(clamp(x - 1, 0, w), clamp(y - 1, 0, h)),
+          top          = idx(clamp(x - 0, 0, w), clamp(y - 1, 0, h)),
+          topright     = idx(clamp(x + 1, 0, w), clamp(y - 1, 0, h)),
+          right        = idx(clamp(x - 0, 0, w), clamp(y - 0, 0, h)),
+          bottomright  = idx(clamp(x + 1, 0, w), clamp(y + 1, 0, h)),
+          bottom       = idx(clamp(x + 1, 0, w), clamp(y - 0, 0, h)),
+          bottomleft   = idx(clamp(x - 1, 0, w), clamp(y + 1, 0, h)),
+          left         = idx(clamp(x - 1, 0, w), clamp(y - 0, 0, h)),
+          tlnorm = rgbavg(b, topleft),
+          tnorm  = rgbavg(b, top),
+          trnorm = rgbavg(b, topright),
+          rnorm  = rgbavg(b, right),
+          brnorm = rgbavg(b, bottomright),
+          bnorm  = rgbavg(b, bottom),
+          blnorm = rgbavg(b, bottomleft),
+          lnorm  = rgbavg(b, left),
+          dx = (trnorm + 2.0 * rnorm + brnorm) - (tlnorm + 2.0 * lnorm + blnorm),
+          dy = (blnorm + 2.0 * bnorm + brnorm) - (tlnorm + 2.0 * tnorm + trnorm),
+          dz = 1.0 / depth,
+          normalized = vnorm(dx, dy, dz);
+
+      function remap(px) {
+        return (px + 1.0) * (128);
+      }
+
+      nmd[idx(x,y)] = remap(normalized[0]);
+      nmd[idx(x,y)+1] = remap(normalized[1]);
+      nmd[idx(x,y)+2] = remap(normalized[2]);
+      nmd[idx(x,y)+3] = 255;
+    }
+  }
+ return nm;
 }
 
 function addSavedEntryToList(versions, key) {
